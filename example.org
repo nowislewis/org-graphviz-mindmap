@@ -1,0 +1,85 @@
+#+TITLE: Example Org Mind Map
+#+AUTHOR: Example User
+
+* Project Management
+:PROPERTIES:
+:ID:       project-management-main
+:END:
+
+This is the main project management overview.
+
+** TODO Planning Phase
+:PROPERTIES:
+:ID:       planning-phase
+:END:
+
+Define project scope and requirements.
+
+*** Requirements Analysis
+Gather all functional and non-functional requirements.
+
+*** Resource Allocation
+Assign team members and budget.
+
+** DONE Research Phase
+:PROPERTIES:
+:ID:       research-phase
+:END:
+
+Research has been completed. See [[id:planning-phase][Planning Phase]] for next steps.
+
+*** Market Analysis
+Study competitor products and market trends.
+
+*** Technology Stack Selection
+Evaluate and choose appropriate technologies.
+
+** Development Phase
+:PROPERTIES:
+:ID:       development-phase
+:END:
+
+Currently implementing the core features.
+This links back to [[id:research-phase][Research Phase]] decisions.
+
+*** Backend Development
+**** Database Design
+**** API Implementation
+**** Authentication System
+
+*** Frontend Development
+**** UI/UX Design
+**** Component Development
+**** State Management
+
+** Testing & QA
+:PROPERTIES:
+:ID:       testing-qa
+:END:
+
+Quality assurance for the [[id:development-phase][Development Phase]].
+
+*** Unit Testing
+Write tests for individual components.
+
+*** Integration Testing
+Test the integration between modules.
+
+*** User Acceptance Testing
+Final testing with end users.
+
+** Deployment
+:PROPERTIES:
+:ID:       deployment
+:END:
+
+Deploy to production after [[id:testing-qa][Testing & QA]] is complete.
+
+*** Staging Environment
+Setup and test in staging.
+
+*** Production Release
+Deploy to production servers.
+
+*** Monitoring & Maintenance
+Monitor system health and performance.
