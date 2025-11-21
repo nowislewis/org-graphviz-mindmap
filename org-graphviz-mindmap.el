@@ -61,6 +61,16 @@ The color is applied only to the TODO keyword text, not the entire node."
   :type 'boolean
   :group 'org-graphviz-mindmap)
 
+(defcustom org-graphviz-mindmap-progress-color "#1976D2"
+  "Color for progress indicators like [1/3] or [33%]."
+  :type 'color
+  :group 'org-graphviz-mindmap)
+
+(defcustom org-graphviz-mindmap-progress-bold t
+  "Whether to make progress indicators bold in labels."
+  :type 'boolean
+  :group 'org-graphviz-mindmap)
+
 ;;; Internal state
 
 (defvar org-graphviz-mindmap--id-to-node (make-hash-table :test 'equal)
@@ -92,17 +102,52 @@ The color is applied only to the TODO keyword text, not the entire node."
   "Get title from HEADLINE without TODO keyword."
   (org-element-property :raw-value headline))
 
+(defun org-graphviz-mindmap--highlight-progress (text)
+  "Highlight progress indicators in TEXT.
+Matches patterns like [1/3] or [33%] and colorizes them."
+  (let ((result text))
+    ;; Match [n/m] or [n%] patterns
+    (when (string-match "\\(\\[\\([0-9]+\\)/\\([0-9]+\\)\\]\\|\\[[0-9]+%\\]\\)" result)
+      (let* ((progress-str (match-string 1 result))
+             (before (substring result 0 (match-beginning 1)))
+             (after (substring result (match-end 1)))
+             (progress-tag (if org-graphviz-mindmap-progress-bold
+                              (format "<B><FONT COLOR=\"%s\">%s</FONT></B>"
+                                      org-graphviz-mindmap-progress-color
+                                      progress-str)
+                            (format "<FONT COLOR=\"%s\">%s</FONT>"
+                                    org-graphviz-mindmap-progress-color
+                                    progress-str))))
+        (setq result (concat before progress-tag after))))
+    result))
+
 (defun org-graphviz-mindmap--make-html-label (title todo)
-  "Create HTML label with colored TODO keyword.
+  "Create HTML label with colored TODO keyword and progress indicators.
 TITLE is the heading text, TODO is the optional TODO keyword."
-  (if (and org-graphviz-mindmap-include-todo-keywords todo)
-      (let* ((todo-color (or (cdr (assoc todo org-graphviz-mindmap-todo-colors)) "#000000"))
-             (todo-tag (if org-graphviz-mindmap-todo-bold
-                          (format "<B><FONT COLOR=\"%s\">%s</FONT></B>" todo-color todo)
-                        (format "<FONT COLOR=\"%s\">%s</FONT>" todo-color todo)))
-             (sanitized-title (org-graphviz-mindmap--sanitize title)))
-        (format "<%s %s>" todo-tag sanitized-title))
-    (org-graphviz-mindmap--sanitize title)))
+  (let* ((sanitized-title (org-graphviz-mindmap--sanitize title))
+         (has-special-formatting nil)
+         (result sanitized-title)
+         (todo-color (when todo
+                      (or (cdr (assoc todo org-graphviz-mindmap-todo-colors)) "#000000")))
+         (todo-tag (when (and org-graphviz-mindmap-include-todo-keywords todo)
+                    (if org-graphviz-mindmap-todo-bold
+                        (format "<B><FONT COLOR=\"%s\">%s</FONT></B>" todo-color todo)
+                      (format "<FONT COLOR=\"%s\">%s</FONT>" todo-color todo)))))
+
+    ;; Add TODO keyword if present
+    (when todo-tag
+      (setq result (concat todo-tag " " result))
+      (setq has-special-formatting t))
+
+    ;; Highlight progress indicators
+    (when (string-match "\\[\\([0-9]+\\(/[0-9]+\\|%\\)\\)\\]" result)
+      (setq result (org-graphviz-mindmap--highlight-progress result))
+      (setq has-special-formatting t))
+
+    ;; Return with proper formatting
+    (if has-special-formatting
+        (format "<%s>" result)
+      result)))
 
 (defun org-graphviz-mindmap--get-color (level)
   "Get color for LEVEL."

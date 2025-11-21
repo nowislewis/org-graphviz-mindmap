@@ -12,7 +12,8 @@ Generate clean, hierarchical mind maps from Org mode files using Graphviz.
 - 📊 *Clean Hierarchy*: Top-to-bottom layout with clear parent-child relationships
 - 🎨 *Level-based Coloring*: Same-level headings share the same color and height
 - 🔗 *Org-ID Links*: Dashed blue arrows show cross-references between nodes
-- ✅ *TODO Keywords*: Optionally include TODO/DONE states in node labels
+- ✅ *TODO Keywords*: Color-coded keywords (TODO in red, DONE in green, etc.)
+- 📊 *Progress Indicators*: Highlighted progress markers like [1/3] or [33%]
 - 📤 *Multiple Formats*: Export to PNG, SVG, or PDF
 - ⚡ *Simple & Efficient*: Clean, optimized codebase
 
@@ -48,36 +49,16 @@ Add to your Emacs config:
 
 * Usage
 
-** Generate Mind Map
+Open an Org file and run ~M-x org-graphviz-mindmap-create~. The mind map is automatically generated, saved to =/tmp/= with a timestamp, and opened - no prompts needed.
 
-Open an Org file and run:
-
-#+begin_example
-M-x org-graphviz-mindmap-create
-#+end_example
-
-This will:
-1. Generate a mind map from your current Org buffer
-2. Save the image to =/tmp/= with a timestamp (e.g., =/tmp/my-file-20251121-174143.png=)
-3. Save the DOT source to =/tmp/= as well (e.g., =/tmp/my-file-20251121-174143.dot=)
-4. *Automatically open the generated image*
-
-No prompts, no file selection - just instant visualization!
-
-** View DOT Source
-
-To see the generated Graphviz DOT code in a buffer:
-
-#+begin_example
-M-x org-graphviz-mindmap-show-dot
-#+end_example
+To view the DOT source code: ~M-x org-graphviz-mindmap-show-dot~
 
 * Example
 
 Given this Org file:
 
 #+begin_src org
-,* Project
+,* Project [1/3]
 :PROPERTIES:
 :ID: project-id
 :END:
@@ -86,7 +67,7 @@ Given this Org file:
 ,*** Wireframes
 ,*** Mockups
 
-,** DONE Development
+,** DONE Development [100%]
 :PROPERTIES:
 :ID: dev-id
 :END:
@@ -100,9 +81,12 @@ See [[id:dev-id][Development]] for context
 
 The mind map will show:
 
-- *Level 1* (Project): Light blue nodes at the top
-- *Level 2* (Design, Development, Testing): Medium blue nodes, same height
-- *Level 3* (Wireframes, Mockups, Backend, Frontend): Darker blue nodes, same height
+- *Level 1* (Project): Light blue node with ~[1/3]~ in blue
+- *Level 2*:
+  - ~TODO Design~: "TODO" in red, medium blue node
+  - ~DONE Development [100%]~: "DONE" in green, "[100%]" in blue
+  - ~Testing~: medium blue node
+- *Level 3* (Wireframes, Mockups, Backend, Frontend): Darker blue nodes
 - *Solid arrows*: Parent → child relationships
 - *Dashed blue arrow*: Testing → Development (org-id link)
 
@@ -132,10 +116,38 @@ Default is a blue gradient:
 
 ** TODO Keywords
 
-Disable TODO keywords in labels:
+By default, TODO keywords are colored within node labels (only the keyword itself, not the entire node):
+
+- *TODO*: Red (~#D32F2F~)
+- *DOING*: Orange (~#F57C00~)
+- *DONE*: Green (~#388E3C~)
+- *CANCELLED*: Gray (~#757575~)
+- *WAITING*: Yellow (~#F9A825~)
+
+Customize TODO keyword colors:
 
 #+begin_src elisp
-(setq org-graphviz-mindmap-include-todo-keywords nil)
+(setq org-graphviz-mindmap-todo-colors
+      '(("TODO" . "#FF0000")
+        ("DONE" . "#00FF00")))
+#+end_src
+
+Disable TODO keyword coloring or make them non-bold:
+
+#+begin_src elisp
+(setq org-graphviz-mindmap-include-todo-keywords nil)  ; Hide TODO keywords entirely
+(setq org-graphviz-mindmap-todo-bold nil)              ; Make TODO keywords non-bold
+#+end_src
+
+** Progress Indicators
+
+Progress indicators like ~[1/3]~ or ~[33%]~ are automatically highlighted in blue (~#1976D2~).
+
+Customize progress indicator appearance:
+
+#+begin_src elisp
+(setq org-graphviz-mindmap-progress-color "#FF5722")  ; Change color
+(setq org-graphviz-mindmap-progress-bold nil)         ; Make non-bold
 #+end_src
 
 * Color Themes
@@ -168,35 +180,47 @@ Disable TODO keywords in labels:
       '("#FAFAFA" "#F5F5F5" "#EEEEEE" "#E0E0E0" "#BDBDBD" "#9E9E9E"))
 #+end_src
 
+* Visual Features in Detail
+
+** Color System
+
+The package uses a dual-color system:
+
+1. *Node Background Colors*: Based on heading level (Level 1 = light, Level 2 = medium, etc.)
+2. *Text Colors*: Independent coloring for:
+   - TODO keywords (only the keyword itself, e.g., "TODO" in red)
+   - Progress indicators (e.g., "[1/3]" in blue)
+   - Regular text (black)
+
+This means a node like ~TODO Design [2/5]~ will have:
+- Node background: Based on its level
+- "TODO": Red text
+- "Design": Black text
+- "[2/5]": Blue text
+
+** Link Types
+
+- *Solid black arrows*: Hierarchical parent → child relationships
+- *Dashed blue arrows*: Cross-references via org-id links (don't affect layout)
+
 * How It Works
 
 1. *Parse*: Uses ~org-element-parse-buffer~ to extract all headings
 2. *Group*: Groups headings by level for rank alignment
 3. *Generate DOT*: Creates Graphviz DOT code with:
    - ~rank=same~ for same-level nodes (ensures equal height)
-   - Level-based colors
+   - HTML labels for colored text within nodes
+   - Level-based node background colors
    - Hierarchical edges (parent → child)
    - Org-id link edges (dashed, constraint=false)
 4. *Render*: Calls ~dot~ to generate the image
 
 * Technical Details
 
-** Layout Strategy
-
-- Uses Graphviz ~rank=same~ to ensure all nodes at the same level appear at the same vertical position
-- Top-to-bottom (~rankdir=TB~) for natural reading flow
-- Org-id links use ~constraint=false~ so they don't affect layout hierarchy
-
-** Node Styling
-
-- All nodes: ~box~ shape with rounded corners
-- Fill color based on heading level
-- Consistent sizing across same level
-
-** Edge Types
-
-- *Solid black edges*: Parent-child hierarchy (2px width)
-- *Dashed blue edges*: Org-id cross-references (constraint=false)
+- *Layout*: Top-to-bottom (~rankdir=TB~) with ~rank=same~ grouping for equal-height same-level nodes
+- *Nodes*: Rounded box shape with level-based background colors and HTML labels for text coloring
+- *Edges*: Solid for hierarchy (2px), dashed for org-id links (~constraint=false~ to avoid layout interference)
+- *Text Styling*: Graphviz HTML labels (~<FONT COLOR="">~, ~<B>~) for independent TODO/progress coloring
 
 * Troubleshooting
 
@@ -226,6 +250,10 @@ For files with 100+ headings, generation may take a few seconds. Consider:
 - ~org-graphviz-mindmap-output-format~: Output format (default: "png")
 - ~org-graphviz-mindmap-include-todo-keywords~: Include TODO states (default: t)
 - ~org-graphviz-mindmap-level-colors~: Color list for levels (default: blue gradient)
+- ~org-graphviz-mindmap-todo-colors~: Color map for TODO keywords (default: TODO=red, DONE=green, etc.)
+- ~org-graphviz-mindmap-todo-bold~: Make TODO keywords bold (default: t)
+- ~org-graphviz-mindmap-progress-color~: Color for progress indicators (default: "#1976D2")
+- ~org-graphviz-mindmap-progress-bold~: Make progress indicators bold (default: t)
 
 ** File Locations
 
