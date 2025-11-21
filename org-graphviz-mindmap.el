@@ -44,6 +44,23 @@
   :type '(repeat color)
   :group 'org-graphviz-mindmap)
 
+(defcustom org-graphviz-mindmap-todo-colors
+  '(("TODO" . "#D32F2F")
+    ("DOING" . "#F57C00")
+    ("DONE" . "#388E3C")
+    ("CANCELLED" . "#757575")
+    ("WAITING" . "#F9A825"))
+  "Colors for TODO keywords in labels.
+Each element is a cons cell (KEYWORD . COLOR).
+The color is applied only to the TODO keyword text, not the entire node."
+  :type '(alist :key-type string :value-type color)
+  :group 'org-graphviz-mindmap)
+
+(defcustom org-graphviz-mindmap-todo-bold t
+  "Whether to make TODO keywords bold in labels."
+  :type 'boolean
+  :group 'org-graphviz-mindmap)
+
 ;;; Internal state
 
 (defvar org-graphviz-mindmap--id-to-node (make-hash-table :test 'equal)
@@ -72,12 +89,20 @@
     text))
 
 (defun org-graphviz-mindmap--get-title (headline)
-  "Get title from HEADLINE with optional TODO keyword."
-  (let ((title (org-element-property :raw-value headline))
-        (todo (org-element-property :todo-keyword headline)))
-    (if (and org-graphviz-mindmap-include-todo-keywords todo)
-        (concat todo " " title)
-      title)))
+  "Get title from HEADLINE without TODO keyword."
+  (org-element-property :raw-value headline))
+
+(defun org-graphviz-mindmap--make-html-label (title todo)
+  "Create HTML label with colored TODO keyword.
+TITLE is the heading text, TODO is the optional TODO keyword."
+  (if (and org-graphviz-mindmap-include-todo-keywords todo)
+      (let* ((todo-color (or (cdr (assoc todo org-graphviz-mindmap-todo-colors)) "#000000"))
+             (todo-tag (if org-graphviz-mindmap-todo-bold
+                          (format "<B><FONT COLOR=\"%s\">%s</FONT></B>" todo-color todo)
+                        (format "<FONT COLOR=\"%s\">%s</FONT>" todo-color todo)))
+             (sanitized-title (org-graphviz-mindmap--sanitize title)))
+        (format "<%s %s>" todo-tag sanitized-title))
+    (org-graphviz-mindmap--sanitize title)))
 
 (defun org-graphviz-mindmap--get-color (level)
   "Get color for LEVEL."
@@ -111,12 +136,14 @@
         (let* ((id (org-graphviz-mindmap--make-id))
                (org-id (org-element-property :ID hl))
                (level (org-element-property :level hl))
-               (title (org-graphviz-mindmap--get-title hl)))
+               (title (org-graphviz-mindmap--get-title hl))
+               (todo (org-element-property :todo-keyword hl)))
           (when org-id (puthash org-id id org-graphviz-mindmap--id-to-node))
           (push (list :id id
                       :org-id org-id
                       :level level
                       :title title
+                      :todo todo
                       :headline hl)
                 headings))))
     (nreverse headings)))
@@ -148,12 +175,17 @@
          (setq nodes (concat nodes (format "  // Level %d\n" lvl)))
          (setq nodes (concat nodes "  { rank=same;\n"))
          (dolist (h (nreverse hs))
-           (let ((id (plist-get h :id))
-                 (title (org-graphviz-mindmap--sanitize (plist-get h :title)))
-                 (color (org-graphviz-mindmap--get-color lvl)))
+           (let* ((id (plist-get h :id))
+                  (title (plist-get h :title))
+                  (todo (plist-get h :todo))
+                  (label (org-graphviz-mindmap--make-html-label title todo))
+                  (color (org-graphviz-mindmap--get-color lvl))
+                  (label-attr (if (string-prefix-p "<" label)
+                                 (format "label=%s" label)
+                               (format "label=\"%s\"" label))))
              (setq nodes (concat nodes
-                                (format "    %s [label=\"%s\", fillcolor=\"%s\"];\n"
-                                       id title color)))))
+                                (format "    %s [%s, fillcolor=\"%s\"];\n"
+                                       id label-attr color)))))
          (setq nodes (concat nodes "  }\n\n")))
        levels))
 
