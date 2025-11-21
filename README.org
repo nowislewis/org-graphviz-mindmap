@@ -36,7 +36,7 @@ brew install graphviz
 ** Manual Installation
 
 #+begin_src bash
-git clone https://github.com/yourusername/org-graphviz-mindmap.git
+git clone https://github.com/nowislewis/org-graphviz-mindmap.git
 #+end_src
 
 Add to your Emacs config:
@@ -44,14 +44,6 @@ Add to your Emacs config:
 #+begin_src elisp
 (add-to-list 'load-path "/path/to/org-graphviz-mindmap")
 (require 'org-graphviz-mindmap)
-#+end_src
-
-** Using use-package
-
-#+begin_src elisp
-(use-package org-graphviz-mindmap
-  :load-path "/path/to/org-graphviz-mindmap"
-  :after org)
 #+end_src
 
 * Usage
